@@ -1,7 +1,5 @@
 import "./style.css";
 
-
-
 import * as THREE from "three/webgpu";
 import {
   color,
@@ -30,26 +28,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 import { addAudioListenerToCamera } from "./audio.js";
 
-
 var userMove = false;
-
-const [sourceModel, me, gaby] = await Promise.all([
-  new Promise((resolve, reject) => {
-    new GLTFLoader().load("./models/Michelle.glb", resolve, undefined, reject);
-  }),
-
-  new Promise((resolve, reject) => {
-    new GLTFLoader().load("./models/me.glb", resolve, undefined, reject);
-  }),
-
-  new Promise((resolve, reject) => {
-    new GLTFLoader().load("./models/gaby5.glb", resolve, undefined, reject);
-  }),
-]);
-
-//
-
-const clock = new THREE.Clock();
 
 export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
   // forked from https://www.shadertoy.com/view/7ly3D1
@@ -82,7 +61,9 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
         vec3(
           sub(
             1,
-            cos(uv.y.add(mul(22, time).sub(pow(uv.x.add(offset), 0.3).mul(60))))
+            cos(
+              uv.y.add(mul(22, time).sub(pow(uv.x.add(offset), 0.3).mul(60)))
+            )
           )
         )
       )
@@ -96,285 +77,231 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
   inputs: [{ name: "suv", type: "vec2" }],
 });
 
-// scene
+const mainLogic = async () => {
+  const [sourceModel, me, gaby] = await Promise.all([
+    new Promise((resolve, reject) => {
+      new GLTFLoader().load(
+        "./models/Michelle.glb",
+        resolve,
+        undefined,
+        reject
+      );
+    }),
 
-const scene = new THREE.Scene();
+    new Promise((resolve, reject) => {
+      new GLTFLoader().load("./models/me.glb", resolve, undefined, reject);
+    }),
 
-// background
+    new Promise((resolve, reject) => {
+      new GLTFLoader().load("./models/gaby5.glb", resolve, undefined, reject);
+    }),
+  ]);
 
-const coloredVignette = screenUV
-  .distance(0.5)
-  .mix(
-    hue(color(0x0175ad), time.mul(0.1)),
-    hue(color(0x02274f), time.mul(0.5))
+  //
+
+  const clock = new THREE.Clock();
+
+    // scene
+
+  const scene = new THREE.Scene();
+
+  // background
+
+  const coloredVignette = screenUV
+    .distance(0.5)
+    .mix(
+      hue(color(0x0175ad), time.mul(0.1)),
+      hue(color(0x02274f), time.mul(0.5))
+    );
+  const lightSpeedEffect = lightSpeed(normalWorld).clamp();
+  const lightSpeedSky = normalWorld.y
+    .remapClamp(-0.1, 1)
+    .mix(0, lightSpeedEffect);
+  const composedBackground = blendDodge(coloredVignette, lightSpeedSky);
+
+  scene.backgroundNode = composedBackground;
+
+  //
+
+  const helpers = new THREE.Group();
+  helpers.visible = false;
+  scene.add(helpers);
+
+  const light = new THREE.HemisphereLight(0xe9c0a5, 0x0175ad, 5);
+  scene.add(light);
+
+  const dirLight = new THREE.DirectionalLight(0xfff9ea, 4);
+  dirLight.position.set(2, 5, 2);
+  scene.add(dirLight);
+
+  const camera = new THREE.PerspectiveCamera(
+    40,
+    window.innerWidth / window.innerHeight,
+    0.25,
+    50
   );
-const lightSpeedEffect = lightSpeed(normalWorld).clamp();
-const lightSpeedSky = normalWorld.y
-  .remapClamp(-0.1, 1)
-  .mix(0, lightSpeedEffect);
-const composedBackground = blendDodge(coloredVignette, lightSpeedSky);
+  camera.position.set(0, 1, 4);
 
-scene.backgroundNode = composedBackground;
+  // add models to scene
+  //scene.add(sourceModel.scene);
+  scene.add(gaby.scene);
+  scene.add(me.scene);
 
-//
+  // reposition models
+  //sourceModel.scene.position.x -= 0.8;
+  gaby.scene.position.x -= 0.8;
+  me.scene.position.x += 0.7;
 
-const helpers = new THREE.Group();
-helpers.visible = false;
-scene.add(helpers);
+  me.scene.position.z -= 0.1;
 
-const light = new THREE.HemisphereLight(0xe9c0a5, 0x0175ad, 5);
-scene.add(light);
+  gaby.scene.position.y = 0.8;
+  me.scene.position.y = 0.9;
 
-const dirLight = new THREE.DirectionalLight(0xfff9ea, 4);
-dirLight.position.set(2, 5, 2);
-scene.add(dirLight);
+  // reajust model
+  me.scene.scale.setScalar(1);
+  gaby.scene.scale.setScalar(0.9);
 
-const camera = new THREE.PerspectiveCamera(
-  40,
-  window.innerWidth / window.innerHeight,
-  0.25,
-  50
-);
-camera.position.set(0, 1, 4);
+  // flip model
+  //sourceModel.scene.rotation.y = Math.PI / 2;
+  gaby.scene.rotation.y = Math.PI / 2;
+  me.scene.rotation.y = -Math.PI / 2;
 
-// add models to scene
-//scene.add(sourceModel.scene);
-scene.add(gaby.scene);
-scene.add(me.scene);
+  // retarget
+  const source = getSource(sourceModel);
+  const mixerMe = retargetModel(source, me);
+  const mixerGaby = retargetModel(source, gaby);
 
-// reposition models
-//sourceModel.scene.position.x -= 0.8;
-gaby.scene.position.x -= 0.8;
-me.scene.position.x += 0.7;
+  // floor
+  const reflection = reflector();
+  reflection.target.rotateX(-Math.PI / 2);
+  scene.add(reflection.target);
 
-me.scene.position.z -= 0.1;
+  const floorMaterial = new THREE.NodeMaterial();
+  floorMaterial.colorNode = reflection;
+  floorMaterial.opacity = 0.2;
+  floorMaterial.transparent = true;
 
-gaby.scene.position.y = 0.8;
-me.scene.position.y = 0.9;
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(50, 0.001, 50),
+    floorMaterial
+  );
+  floor.receiveShadow = true;
 
-// reajust model
-me.scene.scale.setScalar(1);
-gaby.scene.scale.setScalar(0.9);
+  floor.position.set(0, 0, 0);
+  scene.add(floor);
 
-// flip model
-//sourceModel.scene.rotation.y = Math.PI / 2;
-gaby.scene.rotation.y = Math.PI / 2;
-me.scene.rotation.y = -Math.PI / 2;
+  // renderer
+  const renderer = new THREE.WebGPURenderer({ antialias: true });
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.setAnimationLoop(animate);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-// retarget
-const source = getSource(sourceModel);
-const mixerMe = retargetModel(source, me);
-const mixerGaby = retargetModel(source, gaby);
+  const target = { x: 2, y: 2, z: 0 };
+  const camera_offset = { x: 2, y: 1, z: 10 };
+  const camera_speed = 0.4;
 
-// floor
-const reflection = reflector();
-reflection.target.rotateX(-Math.PI / 2);
-scene.add(reflection.target);
+  function getSource(sourceModel) {
+    const clip = sourceModel.animations[0];
 
-const floorMaterial = new THREE.NodeMaterial();
-floorMaterial.colorNode = reflection;
-floorMaterial.opacity = 0.2;
-floorMaterial.transparent = true;
+    const helper = new THREE.SkeletonHelper(sourceModel.scene);
+    helpers.add(helper);
 
-const floor = new THREE.Mesh(
-  new THREE.BoxGeometry(50, 0.001, 50),
-  floorMaterial
-);
-floor.receiveShadow = true;
+    const skeleton = new THREE.Skeleton(helper.bones);
 
-floor.position.set(0, 0, 0);
-scene.add(floor);
+    const mixer = new THREE.AnimationMixer(sourceModel.scene);
+    mixer.clipAction(sourceModel.animations[0]).play();
 
-// renderer
-const renderer = new THREE.WebGPURenderer({ antialias: true });
-renderer.toneMapping = THREE.NeutralToneMapping;
-renderer.setAnimationLoop(animate);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+    return { clip, skeleton, mixer };
+  }
 
-const target = { x: 2, y: 2, z: 0 };
-const camera_offset = { x: 2, y: 1, z: 10 };
-const camera_speed = 0.4;
+  function retargetModel(sourceModel, targetModel) {
+    const targetSkin = targetModel.scene.children[0].children[1];
 
+    const retargetOptions = {
 
+      // specify the name of the source's hip bone.
+      hip: "mixamorigHips",
 
-function getSource(sourceModel) {
-  const clip = sourceModel.animations[0];
+      // preserve the scale of the target model
+      scale: 0.01,
 
-  const helper = new THREE.SkeletonHelper(sourceModel.scene);
-  helpers.add(helper);
+      // use ( 0, 1, 0 ) to ignore xz hip movement.
+      //hipInfluence: new THREE.Vector3( 0, 1, 0 ),
 
-  const skeleton = new THREE.Skeleton(helper.bones);
+      // Map of target's bone names to source's bone names -> { targetBoneName: sourceBoneName }
+      getBoneName: function (bone) {
+        return "mixamorig" + bone.name;
+      },
+    };
 
-  const mixer = new THREE.AnimationMixer(sourceModel.scene);
-  mixer.clipAction(sourceModel.animations[0]).play();
+    const retargetedClip = SkeletonUtils.retargetClip(
+      targetSkin,
+      sourceModel.skeleton,
+      sourceModel.clip,
+      retargetOptions
+    );
 
-  return { clip, skeleton, mixer };
-}
+    // Apply the mixer directly to the SkinnedMesh, not any
+    // ancestor node, because that's what
+    // SkeletonUtils.retargetClip outputs the clip to be
+    // compatible with.
+    const mixer = new THREE.AnimationMixer(targetSkin);
+    mixer.clipAction(retargetedClip).play();
 
-function retargetModel(sourceModel, targetModel) {
-  const targetSkin = targetModel.scene.children[0].children[1];
+    return mixer;
+  }
 
-  // const targetSkelHelper = new THREE.SkeletonHelper(targetModel.scene);
-  // helpers.add(targetSkelHelper);
+  window.onresize = function () {
+    //stats.update();
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 
-  // const rotateCW45 = new THREE.Matrix4().makeRotationY(
-  //   THREE.MathUtils.degToRad(45)
-  // );
-  // const rotateCCW180 = new THREE.Matrix4().makeRotationY(
-  //   THREE.MathUtils.degToRad(-180)
-  // );
-  // const rotateCW180 = new THREE.Matrix4().makeRotationY(
-  //   THREE.MathUtils.degToRad(180)
-  // );
-  // const rotateFoot = new THREE.Matrix4().makeRotationFromEuler(
-  //   new THREE.Euler(
-  //     THREE.MathUtils.degToRad(45),
-  //     THREE.MathUtils.degToRad(180),
-  //     THREE.MathUtils.degToRad(0)
-  //   )
-  // );
-
-  const retargetOptions = {
-    // specify the name of the source's hip bone.
-    // hip: "mixamorigHips",
-
-    // // specify the influence of the source's hip bone.
-    // // use ( 0, 1, 0 ) to ignore xz hip movement.
-    // //hipInfluence: new THREE.Vector3( 0, 1, 0 ),
-
-    // // specify an animation range in seconds.
-    // //trim: [ 3.0, 4.0 ],
-
-    // // preserve the scale of the target model
-    // scale: 1 / targetModel.scene.scale.y,
-
-    // // offset target bones -> { targetBoneName: offsetMatrix }
-    // localOffsets: {
-    //   mixamorigLeftShoulder: rotateCW45,
-    //   mixamorigRightShoulder: rotateCCW180,
-    //   mixamorigLeftArm: rotateCW45,
-    //   mixamorigRightArm: rotateCCW180,
-    //   mixamorigLeftForeArm: rotateCW45,
-    //   mixamorigRightForeArm: rotateCCW180,
-    //   mixamorigLeftHand: rotateCW45,
-    //   mixamorigRightHand: rotateCCW180,
-
-    //   mixamorigLeftUpLeg: rotateCW180,
-    //   mixamorigRightUpLeg: rotateCW180,
-    //   mixamorigLeftLeg: rotateCW180,
-    //   mixamorigRightLeg: rotateCW180,
-    //   mixamorigLeftFoot: rotateFoot,
-    //   mixamorigRightFoot: rotateFoot,
-    //   mixamorigLeftToeBase: rotateCW180,
-    //   mixamorigRightToeBase: rotateCW180,
-    // },
-
-    // // Map of target's bone names to source's bone names -> { targetBoneName: sourceBoneName }
-    // names: {
-    //   mixamorigHips: "mixamorigHips",
-
-    //   mixamorigSpine: "mixamorigSpine",
-    //   mixamorigSpine2: "mixamorigSpine2",
-    //   mixamorigHead: "mixamorigHead",
-
-    //   mixamorigLeftShoulder: "mixamorigLeftShoulder",
-    //   mixamorigRightShoulder: "mixamorigRightShoulder",
-    //   mixamorigLeftArm: "mixamorigLeftArm",
-    //   mixamorigRightArm: "mixamorigRightArm",
-    //   mixamorigLeftForeArm: "mixamorigLeftForeArm",
-    //   mixamorigRightForeArm: "mixamorigRightForeArm",
-    //   mixamorigLeftHand: "mixamorigLeftHand",
-    //   mixamorigRightHand: "mixamorigRightHand",
-
-    //   mixamorigLeftUpLeg: "mixamorigLeftUpLeg",
-    //   mixamorigRightUpLeg: "mixamorigRightUpLeg",
-    //   mixamorigLeftLeg: "mixamorigLeftLeg",
-    //   mixamorigRightLeg: "mixamorigRightLeg",
-    //   mixamorigLeftFoot: "mixamorigLeftFoot",
-    //   mixamorigRightFoot: "mixamorigRightFoot",
-    //   mixamorigLeftToeBase: "mixamorigLeftToeBase",
-    //   mixamorigRightToeBase: "mixamorigRightToeBase",
-    // },
-
-    // specify the name of the source's hip bone.
-    hip: "mixamorigHips",
-
-    // preserve the scale of the target model
-    scale: 0.01,
-
-    // use ( 0, 1, 0 ) to ignore xz hip movement.
-    //hipInfluence: new THREE.Vector3( 0, 1, 0 ),
-
-    // Map of target's bone names to source's bone names -> { targetBoneName: sourceBoneName }
-    getBoneName: function (bone) {
-      return "mixamorig" + bone.name;
-    },
+    renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  const retargetedClip = SkeletonUtils.retargetClip(
-    targetSkin,
-    sourceModel.skeleton,
-    sourceModel.clip,
-    retargetOptions
-  );
+  window.addEventListener("mousemove", (e) => {
+    if (userMove === false) {
+      userMove = true;
+      addAudioListenerToCamera(camera);
+    }
+  });
 
-  // Apply the mixer directly to the SkinnedMesh, not any
-  // ancestor node, because that's what
-  // SkeletonUtils.retargetClip outputs the clip to be
-  // compatible with.
-  const mixer = new THREE.AnimationMixer(targetSkin);
-  mixer.clipAction(retargetedClip).play();
+  window.addEventListener("touchstart", (e) => {
+    if (userMove === false) {
+      userMove = true;
+      addAudioListenerToCamera(camera);
+    }
+  });
 
-  return mixer;
-}
+  function animate() {
+    const delta = clock.getDelta();
 
-window.onresize = function () {
-  //stats.update();
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+    const times = clock.elapsedTime.toFixed(2);
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+    //source.mixer.update(delta);
+    mixerMe.update(delta);
+    mixerGaby.update(delta);
+
+    //controls.update();
+
+    //sphere.position.x=5+(2*(Math.cos(time*2)));
+    //sphere.position.y=2+(5*Math.abs(Math.sin(time*2)));
+    target.x = (me.scene.position.x + gaby.scene.position.x) / 2;
+    target.y = (me.scene.position.y + gaby.scene.position.y) / 2;
+    //target.y=sphere.position.y
+    //target.z=sphere.position.z;
+    camera.position.x =
+      target.x + camera_offset.x * Math.sin(times * camera_speed);
+    camera.position.z =
+      target.z + camera_offset.z * Math.cos(times * camera_speed);
+    camera.position.y = target.y + camera_offset.y;
+    camera.lookAt(target.x, target.y, target.z);
+
+    renderer.render(scene, camera);
+  }
 };
 
-window.addEventListener("mousemove", (e) => {
-  if (userMove === false) {
-    userMove = true;
-    addAudioListenerToCamera(camera);
-  }
-});
 
-window.addEventListener("touchstart", (e) => {
-  if (userMove === false) {
-    userMove = true;
-    addAudioListenerToCamera(camera);
-  }
-});
-
-function animate() {
-  const delta = clock.getDelta();
-
-  const times = clock.elapsedTime.toFixed(2);
-
-  //source.mixer.update(delta);
-  mixerMe.update(delta);
-  mixerGaby.update(delta);
-
-  //controls.update();
-
-  //sphere.position.x=5+(2*(Math.cos(time*2)));
-  //sphere.position.y=2+(5*Math.abs(Math.sin(time*2)));
-  target.x = (me.scene.position.x + gaby.scene.position.x) / 2;
-  target.y = (me.scene.position.y + gaby.scene.position.y) / 2;
-  //target.y=sphere.position.y
-  //target.z=sphere.position.z;
-  camera.position.x =
-    target.x + camera_offset.x * Math.sin(times * camera_speed);
-  camera.position.z =
-    target.z + camera_offset.z * Math.cos(times * camera_speed);
-  camera.position.y = target.y + camera_offset.y;
-  camera.lookAt(target.x, target.y, target.z);
-
-  renderer.render(scene, camera);
-}
+mainLogic();
