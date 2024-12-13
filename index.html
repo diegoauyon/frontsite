@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+    <link
+      href="https://fonts.googleapis.com/css?family=Press+Start+2P"
+      rel="stylesheet"
+    />
+    <link href="https://unpkg.com/nes.css/css/nes.css" rel="stylesheet" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dialog-polyfill/0.5.6/dialog-polyfill.min.js" integrity="sha512-qUIG93zKzcLBVD5RGRbx2PBmbVRu+tJIl+EPLTus0z8I1AMru9sQYdlf6cBacSzYmZVncB9rcc8rYBnazqgrxA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dialog-polyfill/0.5.6/dialog-polyfill.css" integrity="sha512-FH8aHFPbx/WeYvio2Fe/pZZTLwMe6TogMgQhXSspTK13X/mSwUdg+CGuqi/00POqqGWe/FlvtDFk+D9TFJYtPw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boda Gaby y Diego</title>
+  </head>
+  <body>
+    <div class="absolute-container">
+      <div class="nes-container with-title is-centered">
+        <p>¡Nos casamos!</p>
+
+
+        <section>
+          <button type="button" class="nes-btn is-warning pad" onclick="document.getElementById('dialog-default').showModal();">
+            Si estás en una desktop o tu pantalla es grande clickea aquí
+          </button>
+          <dialog class="nes-dialog" id="dialog-default">
+            <form method="dialog">
+              <p class="title">Nota</p>
+              <p>Si estás en el celular, primero ponelo en landscape</p>
+              <menu class="dialog-menu">
+                <button class="nes-btn">Cancelar</button>
+                <button class="nes-btn is-primary">Llevame al show</button>
+              </menu>
+            </form>
+          </dialog>
+        </section>
+        <button type="button" class="nes-btn is-success">¡Tengo Prisa!</button>
+        
+      </div>
+    </div>
+
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

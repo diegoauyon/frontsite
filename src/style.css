@@ -1,0 +1,60 @@
+:root {
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: rgba(255, 255, 255, 0.87);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  color: #fff;
+  line-height: 24px;
+  overscroll-behavior: none;
+}
+
+#notSupported {
+  width: 50%;
+  margin: auto;
+  background-color: #f00;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+.absolute-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding-left: 10%;
+  padding-right: 10%;
+  padding-bottom: 20px;
+}
+
+.pad {
+  margin-bottom: 20px;
+}
+
+@media (-webkit-min-device-pixel-ratio: 0) and (min-resolution: 0.001dpcm) {
+  .nes-btn {
+    border-image-repeat: stretch;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .absolute-container {
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+
+  button {
+    font-size: 8px;
+    padding: 0;
+  }
+
+  .nes-container {
+    padding: 0.5rem 0.5rem !important;
+  }
+}
