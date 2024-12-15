@@ -77,6 +77,14 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
   inputs: [{ name: "suv", type: "vec2" }],
 });
 
+
+function onTransitionEnd( event ) {
+
+	const element = event.target;
+	element.remove();
+	
+}
+
 const mainLogic = async () => {
 
   const loadingManager = new THREE.LoadingManager( () => {
@@ -86,6 +94,9 @@ const mainLogic = async () => {
 		
 		// optional: remove loader from DOM via event listener
 		loadingScreen.addEventListener( 'transitionend', onTransitionEnd );
+
+
+
 		
 	} );
 
