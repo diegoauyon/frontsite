@@ -78,9 +78,20 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
 });
 
 const mainLogic = async () => {
+
+  const loadingManager = new THREE.LoadingManager( () => {
+	
+		const loadingScreen = document.getElementById( 'loading-screen' );
+		loadingScreen.classList.add( 'fade-out' );
+		
+		// optional: remove loader from DOM via event listener
+		loadingScreen.addEventListener( 'transitionend', onTransitionEnd );
+		
+	} );
+
   const [sourceModel, me, gaby] = await Promise.all([
     new Promise((resolve, reject) => {
-      new GLTFLoader().load(
+      new GLTFLoader(loadingManager).load(
         "./models/Michelle.glb",
         resolve,
         undefined,
@@ -262,6 +273,7 @@ const mainLogic = async () => {
   };
 
   window.addEventListener("mousemove", (e) => {
+    console.log("mouse move");
     if (userMove === false) {
       userMove = true;
       addAudioListenerToCamera(camera);

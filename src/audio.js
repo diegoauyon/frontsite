@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 
-import songUrl from "/bonita.mp3";
+import songUrl from "/meneaito.mp3";
 
 const audioLoader = new THREE.AudioLoader();
 
