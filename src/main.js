@@ -26,7 +26,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
-import { addAudioListenerToCamera } from "./audio.js";
+import songUrl from "/meneaito.mp3";
+var constraints = { audio: true }; // add video constraints if required
 
 var userMove = false;
 
@@ -61,9 +62,7 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
         vec3(
           sub(
             1,
-            cos(
-              uv.y.add(mul(22, time).sub(pow(uv.x.add(offset), 0.3).mul(60)))
-            )
+            cos(uv.y.add(mul(22, time).sub(pow(uv.x.add(offset), 0.3).mul(60))))
           )
         )
       )
@@ -77,28 +76,19 @@ export const lightSpeed = /*#__PURE__*/ Fn(([suv_immutable]) => {
   inputs: [{ name: "suv", type: "vec2" }],
 });
 
-
-function onTransitionEnd( event ) {
-
-	const element = event.target;
-	element.remove();
-	
+function onTransitionEnd(event) {
+  const element = event.target;
+  element.remove();
 }
 
 const mainLogic = async () => {
+  const loadingManager = new THREE.LoadingManager(() => {
+    const loadingScreen = document.getElementById("loading-screen");
+    loadingScreen.classList.add("fade-out");
 
-  const loadingManager = new THREE.LoadingManager( () => {
-	
-		const loadingScreen = document.getElementById( 'loading-screen' );
-		loadingScreen.classList.add( 'fade-out' );
-		
-		// optional: remove loader from DOM via event listener
-		loadingScreen.addEventListener( 'transitionend', onTransitionEnd );
-
-
-
-		
-	} );
+    // optional: remove loader from DOM via event listener
+    loadingScreen.addEventListener("transitionend", onTransitionEnd);
+  });
 
   const [sourceModel, me, gaby] = await Promise.all([
     new Promise((resolve, reject) => {
@@ -123,7 +113,7 @@ const mainLogic = async () => {
 
   const clock = new THREE.Clock();
 
-    // scene
+  // scene
 
   const scene = new THREE.Scene();
 
@@ -163,6 +153,8 @@ const mainLogic = async () => {
     50
   );
   camera.position.set(0, 1, 4);
+
+  const audioLoader = new THREE.AudioLoader();
 
   // add models to scene
   //scene.add(sourceModel.scene);
@@ -242,7 +234,6 @@ const mainLogic = async () => {
     const targetSkin = targetModel.scene.children[0].children[1];
 
     const retargetOptions = {
-
       // specify the name of the source's hip bone.
       hip: "mixamorigHips",
 
@@ -283,20 +274,45 @@ const mainLogic = async () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  window.addEventListener("mousemove", (e) => {
-    console.log("mouse move");
-    if (userMove === false) {
-      userMove = true;
-      addAudioListenerToCamera(camera);
-    }
-  });
+  setTimeout(() => {
 
-  window.addEventListener("touchstart", (e) => {
-    if (userMove === false) {
-      userMove = true;
-      addAudioListenerToCamera(camera);
-    }
-  });
+    window.addEventListener("mousemove", (e) => {
+      if (userMove === false) {
+        userMove = true;
+        const listener = new THREE.AudioListener();
+        const sound = new THREE.Audio(listener);
+  
+        camera.add(listener);
+        audioLoader.load(songUrl, (buffer) => {
+          sound.setBuffer(buffer);
+          sound.setLoop(true);
+          sound.setVolume(0.5);
+          sound.play();
+        });
+      }
+  
+    });
+  
+    window.addEventListener("touchstart", (e) => {
+      if (userMove === false) {
+        userMove = true;
+        const listener = new THREE.AudioListener();
+        const sound = new THREE.Audio(listener);
+  
+        camera.add(listener);
+        audioLoader.load(songUrl, (buffer) => {
+          sound.setBuffer(buffer);
+          sound.setLoop(true);
+          sound.setVolume(0.5);
+          sound.play();
+        });
+      }
+  
+    });
+
+  }, 1000);
+
+  
 
   function animate() {
     const delta = clock.getDelta();
@@ -325,6 +341,5 @@ const mainLogic = async () => {
     renderer.render(scene, camera);
   }
 };
-
 
 mainLogic();
